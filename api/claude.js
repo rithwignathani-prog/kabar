@@ -1,15 +1,18 @@
 export default async function handler(req, res) {
+  console.log("1. Handler called, method:", req.method);
+  console.log("2. API key exists:", !!process.env.ANTHROPIC_API_KEY);
+  console.log("3. Body type:", typeof req.body);
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
   try {
     let body = req.body;
+    if (typeof body === "string") body = JSON.parse(body);
+    if (!body) return res.status(400).json({ error: "Empty body" });
 
-    // Parse body if it's a string (Vercel sometimes doesn't auto-parse)
-    if (typeof body === "string") {
-      body = JSON.parse(body);
-    }
+    console.log("4. Calling Anthropic...");
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -22,11 +25,16 @@ export default async function handler(req, res) {
       body: JSON.stringify(body)
     });
 
-    const data = await response.json();
+    console.log("5. Anthropic status:", response.status);
+
+    const text = await response.text();
+    console.log("6. Raw response:", text.slice(0, 200));
+
+    const data = JSON.parse(text);
     res.status(200).json(data);
 
   } catch (err) {
-    console.error("Handler error:", err);
+    console.error("ERROR:", err.message);
     res.status(500).json({ error: err.message });
   }
 }
